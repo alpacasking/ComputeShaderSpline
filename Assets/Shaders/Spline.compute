@@ -1,0 +1,75 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CatmullRom
+#pragma kernel Bezier
+#pragma kernel BSpline2D
+#pragma kernel BSpline3D
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+StructuredBuffer<float3> ControlPoints;
+RWStructuredBuffer<float3> NodePoints;
+int ControlPointAmount;
+int NodeAmount;
+
+[numthreads(1,1,1)]
+void Bezier(uint3 id : SV_DispatchThreadID)
+{
+    int numSections = ControlPointAmount - 1;
+	float t = float(id.x) / NodeAmount;
+    int currPt = min(floor(t * float(numSections)*0.5)*2,numSections-2);
+    float u = t * float(numSections)*0.5 - float(currPt)*0.5;
+    float3 a = ControlPoints[currPt];
+    float3 b = ControlPoints[currPt + 1];
+    float3 c = ControlPoints[currPt + 2];
+
+	NodePoints[id.x] = (1-u)*(1-u)*a+2*u*(1-u)*b+u*u*c;
+}
+
+[numthreads(1,1,1)]
+void BSpline2D(uint3 id : SV_DispatchThreadID)
+{
+    int numSections = ControlPointAmount - 2;
+	float t = float(id.x) / NodeAmount;
+    int currPt = min(floor(t * float(numSections)), numSections - 1);
+    float u = t * float(numSections) - float(currPt);
+    float3 a = ControlPoints[currPt];
+    float3 b = ControlPoints[currPt + 1];
+    float3 c = ControlPoints[currPt + 2];
+
+	NodePoints[id.x] = 0.5*(1-u)*(1-u)*a + 0.5*(-2*u*u + 2*u +1)*b + 0.5* u*u *c;
+}
+
+[numthreads(1,1,1)]
+void BSpline3D(uint3 id : SV_DispatchThreadID)
+{
+	int numSections = ControlPointAmount - 3;
+	float t = float(id.x) / NodeAmount;
+    int currPt = min(floor(t * float(numSections)), numSections - 1);
+    float u = t * float(numSections) - float(currPt);
+    float3 a = ControlPoints[currPt];
+    float3 b = ControlPoints[currPt + 1];
+    float3 c = ControlPoints[currPt + 2];
+    float3 d = ControlPoints[currPt + 3];
+
+	NodePoints[id.x] = ( -pow(u,3) + 3*u*u -3*u +1)/6*a + (3*u*u*u - 6*u*u +4)/6 *b + (-3*u*u*u +3*u*u +3*u+1)/6 *c + u*u*u/6 * d;
+}
+
+[numthreads(1,1,1)]
+void CatmullRom(uint3 id : SV_DispatchThreadID)
+{
+    int numSections = ControlPointAmount - 3;
+	float t = float(id.x) / NodeAmount;
+    int currPt = min(floor(t * float(numSections)), numSections - 1);
+    float u = t * float(numSections) - float(currPt);
+    float3 a = ControlPoints[currPt];
+    float3 b = ControlPoints[currPt + 1];
+    float3 c = ControlPoints[currPt + 2];
+    float3 d = ControlPoints[currPt + 3];
+
+	NodePoints[id.x] = 0.5 * (
+                (-a + 3* b - 3* c + d) * (u * u * u)
+                + (2* a - 5* b + 4 * c - d) * (u * u)
+                + (-a + c) * u
+                + 2 * b
+            );
+}
